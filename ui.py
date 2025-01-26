@@ -161,6 +161,7 @@ class ChatWindow(QMainWindow):
 
     def append_message(self, role, content):
         """ 输出回答 """
+
         def text_to_html(text):
             """ 将语句转为带格式标识的html """
 
@@ -173,29 +174,47 @@ class ChatWindow(QMainWindow):
                 formatter = HtmlFormatter(
                     style="default",
                     noclasses=True,
-                    prestyles="margin:0; padding:0.5em; background:#f0f0f0; border-radius:4px;",
-                    cssstyles="background:#f0f0f0;"
+                    # 关键修改1：保留pre的默认换行特性
+                    prestyles="margin:0; padding:0; white-space: pre-wrap;",
+                    cssstyles="background:#f0f0f0; margin:0; padding:0.5em;"
                 )
                 return highlight(code, lexer, formatter)
 
             text = escape(text)
-            code_blocks = re.findall(r"```(\w*?)\n(.*?)```", text, re.DOTALL)
 
-            for lang, code in code_blocks:
-                raw_code = unescape(code).replace("&lt;", "<").replace("&gt;", ">")
-                highlighted = highlight_code(raw_code, lang)
-                text = text.replace(f"```{lang}\n{code}```", highlighted)
+            def replace_code_blocks(match):
+                lang = match.group(1).strip()
+                code_content = unescape(match.group(2).strip())
+                # 关键修改2：保留原始代码的换行符
+                highlighted = highlight_code(code_content, lang)
+                # 用div包裹保持块级特性
+                return f'<div class="code-block">{highlighted}</div>'
 
-            text = text.replace("\n", "<br>")
-            text = re.sub(r" {2,}", lambda m: "&nbsp;" * len(m.group()), text)
+            text = re.sub(
+                r'```(\w*?)\n(.*?)```',
+                replace_code_blocks,
+                text,
+                flags=re.DOTALL
+            )
+
+            # 转换非代码区域的换行
+            text = re.sub(r'\n', '<br>', text)
             return text
 
         cursor = self.output_area.textCursor()
         cursor.movePosition(cursor.End)
         cursor.insertHtml(f"""
+            <style>
+                .code-block pre {{
+                    background: #f0f0f0 !important;
+                    border-radius: 4px !important;
+                    margin: 4px 0 !important;
+                    white-space: pre-wrap; /* 关键修改3：允许代码换行 */
+                }}
+            </style>
             <div style="margin-bottom:16px">
-                <span style="color:#2c3e50;font-weight:bold">{role}:</span>
-                <div style="margin-top:4px">{text_to_html(content)}<br><br></div>
+                <span style="color:#2c3e50;font-weight:bold"><br>{role}:</span>
+                <div style="margin-top:4px">{text_to_html(content)}</div>
             </div>
         """)
         self.output_area.ensureCursorVisible()
