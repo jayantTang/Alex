@@ -6,7 +6,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     questions = [
         "提供简易的python代码实例",
-        # "解释装饰器的作用",
+        "23+5等于多少",
         # "写一个计算斐波那契数列的函数"
     ]
     window = ChatWindow(questions)

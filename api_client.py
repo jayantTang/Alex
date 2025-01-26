@@ -1,5 +1,5 @@
 # api_client.py
-import certifi
+from PyQt5.QtCore import QThread, pyqtSignal
 import requests
 
 
@@ -26,5 +26,18 @@ class DeepSeekAPI:
         return response.json()["choices"][0]["message"]["content"]
 
 
-api = DeepSeekAPI() # 替换为实际API密钥
-print(api.get_response("你好"))
+class ChatWorker(QThread):
+    finished = pyqtSignal(str)
+
+    def __init__(self, question, finish_task, parent=None):
+        super().__init__(parent)
+        self.question = question
+        self.finished.connect(finish_task)
+
+    def run(self):
+        api = DeepSeekAPI()
+        answer = api.get_response(self.question)
+        self.finished.emit(answer)
+
+# api = DeepSeekAPI() # 替换为实际API密钥
+# print(api.get_response("你好"))
