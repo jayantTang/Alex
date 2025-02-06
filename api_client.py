@@ -2,6 +2,8 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import requests
 
+from OllamaAPI import OllamaAPI
+
 
 class DeepSeekAPI:
     def __init__(self):
@@ -35,8 +37,14 @@ class ChatWorker(QThread):
         self.finished.connect(finish_task)
 
     def run(self):
-        api = DeepSeekAPI()
-        answer = api.get_response(self.question)
+        # 引用官方API
+        # api = DeepSeekAPI()
+        # answer = api.get_response(self.question)
+
+        # 引用本地模型
+        ollama = OllamaAPI(model_name="deepseek-r1:14b")
+        answer = ollama.generate(self.question, stream=False)
+
         self.finished.emit(answer)
 
 # api = DeepSeekAPI() # 替换为实际API密钥
