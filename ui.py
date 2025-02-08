@@ -1,17 +1,11 @@
 # ui.py
-import re
-from html import escape, unescape
-from time import sleep
-
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QTextEdit, QLineEdit, QPushButton)
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal
-from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtCore import QMetaObject, Qt
-from pygments import highlight
-from pygments.lexers import PythonLexer, get_lexer_by_name
-from pygments.formatters import HtmlFormatter
+                             QTextEdit, QPushButton)
+from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt
 from api_client import ChatWorker
+from TextToHtml import TextToHtml
 
 
 class MultilineTextEdit(QTextEdit):
@@ -37,6 +31,7 @@ class MultilineTextEdit(QTextEdit):
 
 class ChatWindow(QMainWindow):
     preset_task_finish = pyqtSignal()
+
     def __init__(self, questions):
         def init_ui():
             self.setWindowTitle("DeepSeek-Alex")
@@ -77,18 +72,23 @@ class ChatWindow(QMainWindow):
                         """)
             self.input_field.setMaximumHeight(100)  # 限制输入框高度
             self.send_btn = QPushButton("Send")
+            self.stop_btn = QPushButton("Stop")
             input_layout.addWidget(self.input_field, 4)
             input_layout.addWidget(self.send_btn, 1)
+            input_layout.addWidget(self.stop_btn, 1)
             layout.addLayout(input_layout)
 
             # 信号连接
             self.send_btn.clicked.connect(self.send_Button_submit)
+            self.stop_btn.clicked.connect(self.stop_Button_submit)
             self.input_field.enterPressed.connect(self.send_Button_submit)
 
         super().__init__()
         self.send_btn = None
+        self.stop_btn = None
         self.input_field = None
         self.output_area = None
+        self.tth = TextToHtml()
         init_ui()
 
         # 新增功能属性
@@ -107,12 +107,17 @@ class ChatWindow(QMainWindow):
             self.input_field.setPlainText(one)
             self.send_Button_submit()
 
+    def stop_Button_submit(self):
+        self.chat_task.stop()
+        self.send_btn.setEnabled(True)
+
     def send_Button_submit(self):
-        def send_Button_submit_respond(answer):
+        def send_Button_submit_respond(finished, answer):
             """ 处理AI响应 """
-            self.append_message("AI", answer)
-            self.send_btn.setEnabled(True)
-            self.preset_task_finish.emit()
+            self.append_message("ai_words", answer)
+            if finished is True:
+                self.send_btn.setEnabled(True)
+                self.preset_task_finish.emit()
 
         # 锁定按钮
         self.send_btn.setEnabled(False)
@@ -125,12 +130,14 @@ class ChatWindow(QMainWindow):
 
         self.input_history.append(user_input)
         self.current_history_index = len(self.input_history)
-        self.append_message("User", user_input)
+        self.append_message("user_role", "User")
+        self.append_message("user_words", user_input)
         self.input_field.clear()
 
         # 发起AI访问
         self.chat_task = ChatWorker(user_input, send_Button_submit_respond)
         self.chat_task.start()
+        self.append_message("ai_role", "AI")
 
     def navigate_history(self, direction):  # 移动到类方法层级
         """历史记录导航逻辑"""
@@ -159,62 +166,34 @@ class ChatWindow(QMainWindow):
         else:
             super().keyPressEvent(event)
 
-    def append_message(self, role, content):
-        """ 输出回答 """
-
-        def text_to_html(text):
-            """ 将语句转为带格式标识的html """
-
-            def highlight_code(code, language="python"):
-                try:
-                    lexer = get_lexer_by_name(language.strip(), stripall=True)
-                except:
-                    lexer = PythonLexer()
-
-                formatter = HtmlFormatter(
-                    style="default",
-                    noclasses=True,
-                    # 关键修改1：保留pre的默认换行特性
-                    prestyles="margin:0; padding:0; white-space: pre-wrap;",
-                    cssstyles="background:#f0f0f0; margin:0; padding:0.5em;"
-                )
-                return highlight(code, lexer, formatter)
-
-            text = escape(text)
-
-            def replace_code_blocks(match):
-                lang = match.group(1).strip()
-                code_content = unescape(match.group(2).strip())
-                # 关键修改2：保留原始代码的换行符
-                highlighted = highlight_code(code_content, lang)
-                # 用div包裹保持块级特性
-                return f'<div class="code-block">{highlighted}</div>'
-
-            text = re.sub(
-                r'```(\w*?)\n(.*?)```',
-                replace_code_blocks,
-                text,
-                flags=re.DOTALL
-            )
-
-            # 转换非代码区域的换行
-            text = re.sub(r'\n', '<br>', text)
-            return text
-
+    def append_message(self, op_type, content):
+        """ 输出回答
+            type:
+                user_role
+                ai_role
+                user_words
+                ai_words
+        """
         cursor = self.output_area.textCursor()
         cursor.movePosition(cursor.End)
-        cursor.insertHtml(f"""
-            <style>
-                .code-block pre {{
-                    background: #f0f0f0 !important;
-                    border-radius: 4px !important;
-                    margin: 4px 0 !important;
-                    white-space: pre-wrap; /* 关键修改3：允许代码换行 */
-                }}
-            </style>
-            <div style="margin-bottom:16px">
-                <span style="color:#2c3e50;font-weight:bold"><br>{role}:</span>
-                <div style="margin-top:4px">{text_to_html(content)}</div>
-            </div>
-        """)
+        html_text = self.tth.deal(op_type, content)
+
+        # print(f"{content}|")
+        # print(f"{html_text}|")
+        cursor.insertHtml(html_text)
         self.output_area.ensureCursorVisible()
+
+        # cursor.insertHtml(f"""
+        #     <style>
+        #         .code-block pre {{
+        #             background: #f0f0f0 !important;
+        #             border-radius: 4px !important;
+        #             margin: 4px 0 !important;
+        #             white-space: pre-wrap; /* 关键修改3：允许代码换行 */
+        #         }}
+        #     </style>
+        #     <div style="margin-bottom:16px">
+        #         <span style="color:#2c3e50;font-weight:bold"><br>{role}:</span>
+        #         <div style="margin-top:4px">{text_to_html(content)}</div>
+        #     </div>
+        # """)
