@@ -127,6 +127,9 @@ class TextToHtml:
                     else:
                         pic = pic.replace('\n', '<br>')
                         output_html += pic
+                else:
+                    output_html += f"[{type}]"
+                    output_html += html.escape(pic)
 
         return output_html, other_slice
 
@@ -161,7 +164,16 @@ class TextToHtml:
         elif op_type == "ai_role":
             return f"""<br>{content}:"""
         elif op_type == "user_words":
-            return f"""{content}"""
+            css = """
+            <style>
+            .red-bold {
+                color: red;
+                font-weight: bold;
+            }
+            </style>
+            """
+
+            return f"{css}<br><span class='red-bold'>{content}:</span>"
         elif op_type != "ai_words":
             raise Exception("TextToHtml:deal:op_type error")
 
