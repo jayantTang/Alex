@@ -168,7 +168,8 @@ if __name__ == "__main__":
 - 如果需要更高性能，可以尝试其他大语言模型（如 `llama-cpp`）。
 - 确保本地有足够的计算资源运行这些模型。
 
-如果有任何问题，请随时告诉我！"""
+如果有任何问题，请随时告诉我！
+self.finished.emit(False, chunk)"""
 
         # for i in range(0, len(content), 3):
         #     chunk = content[i:i + 3]

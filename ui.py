@@ -177,23 +177,6 @@ class ChatWindow(QMainWindow):
         cursor = self.output_area.textCursor()
         cursor.movePosition(cursor.End)
         html_text = self.tth.deal(op_type, content)
-
-        # print(f"{content}|")
-        # print(f"{html_text}|")
         cursor.insertHtml(html_text)
-        self.output_area.ensureCursorVisible()
 
-        # cursor.insertHtml(f"""
-        #     <style>
-        #         .code-block pre {{
-        #             background: #f0f0f0 !important;
-        #             border-radius: 4px !important;
-        #             margin: 4px 0 !important;
-        #             white-space: pre-wrap; /* 关键修改3：允许代码换行 */
-        #         }}
-        #     </style>
-        #     <div style="margin-bottom:16px">
-        #         <span style="color:#2c3e50;font-weight:bold"><br>{role}:</span>
-        #         <div style="margin-top:4px">{text_to_html(content)}</div>
-        #     </div>
-        # """)
+        self.output_area.ensureCursorVisible()

@@ -103,35 +103,25 @@ class TextToHtml:
                 if self.section == "python":
                     self.code_text += pic
                 else:
-                    # HTML 转义
                     pic = html.escape(pic)
                     pic = pic.replace(' ', '&nbsp;')
                     pic = pic.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
 
                     output_html += pic
-
-                # code_content = unescape(match.group(2).strip())
-                # # 关键修改2：保留原始代码的换行符
-                # highlighted = highlight_code(code_content, lang)
-                # # 用div包裹保持块级特性
-                # return f'<div class="code-block">{highlighted}</div>'
-
             else:
                 if type == 2:
                     self.section = "python"
-                    output_html += f'<div class="code-block">'
+                    # output_html += f'<div class="code-block">'
                     output_html += f"[{type}]"
                     output_html += pic
                 elif type == 3:
                     self.section = ""
-                    output_html += f'</div>'
+                    # output_html += '<div class="highlight" style="background:#000000; margin:0; padding:0.5em;"></div>'
                     output_html += f"[{type}]"
                     output_html += pic
                 elif type == 4: # \n
                     if self.section == "python":
                         temp = self.highlight_code(self.code_text + pic, language="python")
-                        print(f"0:[{self.code_text + pic}]")
-                        print(f"1:[{temp}]")
                         output_html += temp
                         self.code_text = ""
                     else:
@@ -150,19 +140,19 @@ class TextToHtml:
         formatter = HtmlFormatter(
             style="default",
             noclasses=True,
-            prestyles="margin:0; padding:0; white-space: pre;",
-            cssstyles="background:#f0f0f0; margin:0; padding:0.5em;",
-            lineseparator=""  # 直接设置行分隔符为<br>
+            prestyles="margin:0; padding:0; white-space: pre; line-height: 10px;",
+            cssstyles="background:#f0f0f0; margin:0; padding:0.2em;"
         )
 
-
-        output = code.replace('\n', '<br>')
+        output = re.sub(r'^\n$', '', code)
+        output = output.replace('\n', '<br>')
         output = output.replace('\t', '    ')
         output = highlight(output, lexer, formatter)
 
         output = output.replace('<span style="color: #666">&lt;</span>br<span style="color: #666">&gt;</span>', '<br>')
         output = output.replace('<span style="color: #666">&lt;</span>br<span style="color: #666">&gt;&lt;</span>br<span style="color: #666">&gt;</span>', '<br><br>')
         output = output.replace('&lt;br&gt;', '<br>')
+
         return output
 
     def deal(self, op_type, content):
@@ -175,66 +165,10 @@ class TextToHtml:
         elif op_type != "ai_words":
             raise Exception("TextToHtml:deal:op_type error")
 
-        # return f"""
-        #     <div style="margin-top:4px">{self.text_to_html(content)}</div>
-
-        # print(f"---------")
-        # print(f"原有:{self.buffer}|")
-
         self.buffer += content
-        # print(f"现有:{self.buffer}|")
-
         [this_slices, self.buffer] = self.bufferToSlice(self.buffer)
         self.slice += this_slices
-        # print(self.slice)
         output, other_slice = self.slice_match(self.slice)
-        # print(f"[{content}] + [{self.slice}]  ===>  [{self.buffer}] + [{output}] + [{other_slice}]")
         self.slice = other_slice
 
-
-
-
-        # 添加代码高亮
-
-
         return output
-
-    def text_to_html(self, text):
-        # return text # todo:先跳过代码高亮处理流程,重构后调整
-        """ 将语句转为带格式标识的html """
-
-        def highlight_code(code, language="python"):
-            try:
-                lexer = get_lexer_by_name(language.strip(), stripall=True)
-            except:
-                lexer = PythonLexer()
-
-            formatter = HtmlFormatter(
-                style="default",
-                noclasses=True,
-                # 关键修改1：保留pre的默认换行特性
-                prestyles="margin:0; padding:0; white-space: pre-wrap;",
-                cssstyles="background:#f0f0f0; margin:0; padding:0.5em;"
-            )
-            return highlight(code, lexer, formatter)
-
-        text = escape(text)
-
-        def replace_code_blocks(match):
-            lang = match.group(1).strip()
-            code_content = unescape(match.group(2).strip())
-            # 关键修改2：保留原始代码的换行符
-            highlighted = highlight_code(code_content, lang)
-            # 用div包裹保持块级特性
-            return f'<div class="code-block">{highlighted}</div>'
-
-        text = re.sub(
-            r'```(\w*?)\n(.*?)```',
-            replace_code_blocks,
-            text,
-            flags=re.DOTALL
-        )
-
-        # 转换非代码区域的换行
-        text = re.sub(r'\n', '<br>', text)
-        return text
