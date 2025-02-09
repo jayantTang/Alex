@@ -8,6 +8,7 @@ if __name__ == "__main__":
         # "提供简易的python代码实例",
         # "23+5等于多少",
         "你好",
+        "提供一行python代码helloworld实例,不用过多考虑",
         # "写一个计算斐波那契数列的函数"
     ]
     window = ChatWindow(questions)
